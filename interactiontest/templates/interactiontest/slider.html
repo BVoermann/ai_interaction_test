@@ -1,0 +1,592 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KI-Nutzung Selbst-Check</title>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #f5f5f5;
+        }
+
+        /* ── Slide container ── */
+        .slides-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .slide {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+
+        .slide.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* ── Background image area ── */
+        .slide-bg {
+            flex: 1;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: top center;
+            background-color: #f5f5f5;
+            position: relative;
+            min-height: 0;
+        }
+
+        /* ── Slider overlaid on the image ── */
+        .slider-overlay {
+            position: absolute;
+            top: 80%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60%;
+            z-index: 10;
+        }
+
+        .slider-track-wrapper {
+            position: relative;
+            width: 100%;
+            height: 34px;
+        }
+
+        .slider-track-img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: fill;
+            border-radius: 17px;
+            pointer-events: none;
+            filter: drop-shadow(0 2px 6px rgba(0,0,0,0.15));
+        }
+
+        .slider-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+            z-index: 2;
+            margin: 0;
+        }
+
+        /* Thumb – WebKit */
+        .slider-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 26px;
+            height: 42px;
+            border-radius: 13px;
+            background: #ffffff;
+            border: 3px solid #555;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            cursor: grab;
+            transition: box-shadow 0.2s, transform 0.15s;
+        }
+
+        .slider-input::-webkit-slider-thumb:hover {
+            box-shadow: 0 3px 12px rgba(0,0,0,0.35);
+            transform: scale(1.08);
+        }
+
+        .slider-input::-webkit-slider-thumb:active {
+            cursor: grabbing;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.3);
+        }
+
+        /* Thumb – Firefox */
+        .slider-input::-moz-range-thumb {
+            width: 22px;
+            height: 38px;
+            border-radius: 11px;
+            background: #ffffff;
+            border: 3px solid #555;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            cursor: grab;
+        }
+
+        .slider-input::-moz-range-thumb:hover {
+            box-shadow: 0 3px 12px rgba(0,0,0,0.35);
+            transform: scale(1.08);
+        }
+
+        /* Track – Firefox */
+        .slider-input::-moz-range-track {
+            background: transparent;
+            border: none;
+            height: 100%;
+        }
+
+        /* ── Bottom bar (button + dots) ── */
+        .slide-bottom {
+            flex-shrink: 0;
+            background: #f5f5f5;
+            padding: 12px 5% 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* ── Continue button ── */
+        .btn-continue {
+            padding: 10px 40px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            background: linear-gradient(135deg, #d97a4a, #3b5998);
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            letter-spacing: 0.3px;
+            transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        }
+
+        .btn-continue:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.25);
+        }
+
+        .btn-continue:active {
+            transform: translateY(0);
+        }
+
+        /* ── Progress dots ── */
+        .progress-dots {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ccc;
+            transition: background 0.3s, transform 0.3s;
+        }
+
+        .dot.done {
+            background: linear-gradient(135deg, #d97a4a, #3b5998);
+            transform: scale(1.1);
+        }
+
+        .dot.current {
+            background: #888;
+            transform: scale(1.2);
+        }
+
+        /* ── Slide counter ── */
+        .slide-counter {
+            font-size: 0.75rem;
+            color: #999;
+            letter-spacing: 0.5px;
+        }
+
+        /* ── Result page ── */
+        .result-slide {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.6s ease;
+            padding: 30px 5%;
+            overflow-y: auto;
+        }
+
+        .result-slide.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .result-card {
+            background: #fff;
+            border-radius: 20px;
+            padding: 36px 40px;
+            max-width: 720px;
+            width: 100%;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.12);
+            text-align: center;
+            animation: cardIn 0.6s ease-out;
+        }
+
+        @keyframes cardIn {
+            from { transform: translateY(30px) scale(0.96); opacity: 0; }
+            to   { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        .result-icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
+
+        .result-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+
+        .result-score {
+            font-size: 0.9rem;
+            color: #999;
+            margin-bottom: 20px;
+        }
+
+        .result-text {
+            font-size: 1rem;
+            line-height: 1.7;
+            color: #444;
+            text-align: left;
+        }
+
+        .result-text p {
+            margin-bottom: 12px;
+        }
+
+        .result-meter {
+            width: 100%;
+            height: 12px;
+            border-radius: 6px;
+            background: linear-gradient(90deg, #d97a4a, #a06a7a, #6b6a9a, #3b5998);
+            margin: 20px 0 8px;
+            position: relative;
+        }
+
+        .result-meter-marker {
+            position: absolute;
+            top: -6px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #fff;
+            border: 3px solid #333;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transform: translateX(-50%);
+            transition: left 0.8s ease;
+        }
+
+        .result-meter-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: #999;
+            margin-top: 2px;
+        }
+
+        .btn-restart {
+            margin-top: 24px;
+            padding: 10px 36px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #3b5998;
+            background: transparent;
+            border: 2px solid #3b5998;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-restart:hover {
+            background: #3b5998;
+            color: #fff;
+        }
+
+        /* ── Responsive ── */
+        @media (max-height: 500px) {
+            .slide-bottom {
+                padding: 8px 5% 6px;
+                gap: 6px;
+            }
+            .btn-continue {
+                padding: 7px 30px;
+                font-size: 0.85rem;
+            }
+            .slider-track-wrapper {
+                height: 26px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .slider-overlay {
+                width: 80%;
+            }
+            .result-card {
+                padding: 24px 20px;
+            }
+            .result-title {
+                font-size: 1.25rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="slides-wrapper" id="app">
+
+    {% for i in slide_numbers %}
+    <div class="slide {% if forloop.first %}active{% endif %}" data-slide="{{ forloop.counter0 }}" data-has-slider="{% if forloop.counter >= 3 %}true{% else %}false{% endif %}">
+        <div class="slide-bg" style="background-image: url('{% static 'JPGs_leer/' %}{{ i }}.jpg');">
+            {% if forloop.counter >= 3 %}
+            <div class="slider-overlay">
+                <div class="slider-track-wrapper">
+                    <img class="slider-track-img" src="{% static 'Verlauf Regler.png' %}" alt="Slider">
+                    <input type="range" class="slider-input" min="0" max="100" value="50"
+                           data-index="{{ forloop.counter0 }}">
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        <div class="slide-bottom">
+            <div class="progress-dots">
+                {% for j in slide_numbers %}
+                <div class="dot" data-dot="{{ forloop.counter0 }}"></div>
+                {% endfor %}
+            </div>
+            {% if forloop.counter >= 3 %}
+            <div class="slide-counter">Frage {{ forloop.counter|add:"-2" }} von 7</div>
+            {% endif %}
+            <button class="btn-continue" data-index="{{ forloop.counter0 }}">Weiter</button>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Result pages (one per category, only one shown) -->
+    <div class="result-slide" id="result-1">
+        <div class="result-card">
+            <div class="result-icon">&#x1F9E0;</div>
+            <div class="result-title">Passiver Konsum</div>
+            <div class="result-score" id="score-display-1"></div>
+            <div class="result-meter">
+                <div class="result-meter-marker" id="marker-1"></div>
+            </div>
+            <div class="result-meter-labels">
+                <span>Passiv</span><span>Souver&auml;n</span>
+            </div>
+            <div class="result-text">
+                <p>Deine Antworten deuten darauf hin, dass du KI-Werkzeuge bislang &uuml;berwiegend <strong>passiv konsumierst</strong>. Du &uuml;bernimmst Ergebnisse h&auml;ufig ungepr&uuml;ft und l&auml;sst die KI einen Gro&szlig;teil der Denkarbeit erledigen.</p>
+                <p><strong>Empfehlung:</strong> Beginne damit, KI-Ausgaben aktiv zu hinterfragen. Stelle dir bei jeder Antwort die Frage: <em>&bdquo;Kann ich das unabh&auml;ngig &uuml;berpr&uuml;fen?&ldquo;</em> Nutze KI als Startpunkt, nicht als Endprodukt. Versuche, eigene L&ouml;sungsans&auml;tze zu entwickeln, bevor du KI einsetzt.</p>
+            </div>
+            <button class="btn-restart" onclick="restart()">Nochmal starten</button>
+        </div>
+    </div>
+
+    <div class="result-slide" id="result-2">
+        <div class="result-card">
+            <div class="result-icon">&#x1F4A1;</div>
+            <div class="result-title">Geleitete Nutzung</div>
+            <div class="result-score" id="score-display-2"></div>
+            <div class="result-meter">
+                <div class="result-meter-marker" id="marker-2"></div>
+            </div>
+            <div class="result-meter-labels">
+                <span>Passiv</span><span>Souver&auml;n</span>
+            </div>
+            <div class="result-text">
+                <p>Du nutzt KI bereits <strong>gezielt</strong>, aber tendierst dazu, Ergebnisse ohne tiefere Reflexion zu &uuml;bernehmen. Es gibt Potenzial, deine kritische Auseinandersetzung mit KI-generierten Inhalten zu st&auml;rken.</p>
+                <p><strong>Empfehlung:</strong> &Uuml;be dich darin, KI-Ergebnisse mit mindestens einer unabh&auml;ngigen Quelle gegenzupr&uuml;fen. Formuliere Prompts bewusster und pr&auml;ziser. F&uuml;hre ein kurzes Reflexionsprotokoll: Was hat die KI gut gemacht? Wo hat sie Schw&auml;chen gezeigt?</p>
+            </div>
+            <button class="btn-restart" onclick="restart()">Nochmal starten</button>
+        </div>
+    </div>
+
+    <div class="result-slide" id="result-3">
+        <div class="result-card">
+            <div class="result-icon">&#x1F50D;</div>
+            <div class="result-title">Reflektierte Anwendung</div>
+            <div class="result-score" id="score-display-3"></div>
+            <div class="result-meter">
+                <div class="result-meter-marker" id="marker-3"></div>
+            </div>
+            <div class="result-meter-labels">
+                <span>Passiv</span><span>Souver&auml;n</span>
+            </div>
+            <div class="result-text">
+                <p>Du gehst bereits <strong>reflektiert</strong> mit KI um. Du hinterfragst Ergebnisse, nutzt KI als Werkzeug und beh&auml;ltst die Kontrolle &uuml;ber deinen Lernprozess. Es gibt noch Raum f&uuml;r mehr Souver&auml;nit&auml;t.</p>
+                <p><strong>Empfehlung:</strong> Vertiefe dein Verst&auml;ndnis der Funktionsweise von KI-Systemen. Experimentiere mit verschiedenen Prompting-Strategien und vergleiche systematisch die Qualit&auml;t der Ergebnisse. Teile dein Wissen mit Kommilitonen und diskutiere ethische Aspekte der KI-Nutzung.</p>
+            </div>
+            <button class="btn-restart" onclick="restart()">Nochmal starten</button>
+        </div>
+    </div>
+
+    <div class="result-slide" id="result-4">
+        <div class="result-card">
+            <div class="result-icon">&#x1F3AF;</div>
+            <div class="result-title">Kognitive Souver&auml;nit&auml;t</div>
+            <div class="result-score" id="score-display-4"></div>
+            <div class="result-meter">
+                <div class="result-meter-marker" id="marker-4"></div>
+            </div>
+            <div class="result-meter-labels">
+                <span>Passiv</span><span>Souver&auml;n</span>
+            </div>
+            <div class="result-text">
+                <p>Hervorragend! Du nutzt KI mit <strong>hoher kognitiver Souver&auml;nit&auml;t</strong>. Du verstehst die St&auml;rken und Grenzen von KI, setzt sie gezielt als Werkzeug ein und beh&auml;ltst die volle Kontrolle &uuml;ber deinen Denk- und Lernprozess.</p>
+                <p><strong>Empfehlung:</strong> Bleib neugierig und passe deine Strategien an neue KI-Entwicklungen an. &Uuml;bernimm eine Vorbildrolle und unterst&uuml;tze andere dabei, einen reflektierten Umgang mit KI zu entwickeln. Engagiere dich in Diskussionen &uuml;ber verantwortungsvolle KI-Nutzung in der Hochschulbildung.</p>
+            </div>
+            <button class="btn-restart" onclick="restart()">Nochmal starten</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+(function() {
+    const TOTAL_SLIDES = 9;
+    const FIRST_SLIDER_SLIDE = 2; // 0-indexed: slides 3-9 have sliders (index 2-8)
+    const NUM_SCORED = 7;         // 7 slides with sliders
+    const scores = new Array(TOTAL_SLIDES).fill(null);
+    let currentSlide = 0;
+
+    const slides = document.querySelectorAll('.slide');
+    const buttons = document.querySelectorAll('.btn-continue');
+    const allDots = document.querySelectorAll('.dot');
+
+    function updateDots() {
+        allDots.forEach(dot => {
+            const idx = parseInt(dot.dataset.dot);
+            dot.classList.remove('done', 'current');
+            if (idx < currentSlide) dot.classList.add('done');
+            else if (idx === currentSlide) dot.classList.add('current');
+        });
+    }
+
+    function getCategory(value) {
+        if (value < 25) return 1;
+        if (value < 50) return 2;
+        if (value < 75) return 3;
+        return 4;
+    }
+
+    function showSlide(index) {
+        slides.forEach(s => s.classList.remove('active'));
+        if (index < TOTAL_SLIDES) {
+            slides[index].classList.add('active');
+        }
+        currentSlide = index;
+        updateDots();
+    }
+
+    function showResult() {
+        // Only sum scores from slides that have sliders (index 2-8)
+        let total = 0;
+        for (let i = FIRST_SLIDER_SLIDE; i < TOTAL_SLIDES; i++) {
+            total += scores[i] || 0;
+        }
+        // total ranges from 7 to 28
+        let resultId;
+        if (total <= 12) resultId = 1;
+        else if (total <= 17) resultId = 2;
+        else if (total <= 22) resultId = 3;
+        else resultId = 4;
+
+        // Hide all question slides
+        slides.forEach(s => s.classList.remove('active'));
+
+        // Show result
+        const resultEl = document.getElementById('result-' + resultId);
+        resultEl.classList.add('active');
+
+        // Update score display
+        const scoreDisplay = document.getElementById('score-display-' + resultId);
+        scoreDisplay.textContent = total + ' von 28 Punkten';
+
+        // Position marker on meter (7 = 0%, 28 = 100%)
+        const pct = ((total - 7) / 21) * 100;
+        const marker = document.getElementById('marker-' + resultId);
+        setTimeout(function() { marker.style.left = pct + '%'; }, 100);
+
+        // Set background gradient
+        const t = pct / 100;
+        const r = Math.round(217 - t * 158);
+        const g = Math.round(122 - t * 33);
+        const b = Math.round(74 + t * 78);
+        resultEl.style.background = 'linear-gradient(135deg, #f5f5f5, rgb(' + r + ',' + g + ',' + b + ', 0.15))';
+    }
+
+    buttons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const idx = parseInt(this.dataset.index);
+
+            // Record score only for slides that have sliders
+            if (idx >= FIRST_SLIDER_SLIDE) {
+                const slider = slides[idx].querySelector('.slider-input');
+                if (slider) {
+                    scores[idx] = getCategory(parseInt(slider.value));
+                }
+            }
+
+            if (idx < TOTAL_SLIDES - 1) {
+                showSlide(idx + 1);
+            } else {
+                showResult();
+            }
+        });
+    });
+
+    // Initialize dots on first slide
+    updateDots();
+})();
+
+function restart() {
+    // Hide all results
+    document.querySelectorAll('.result-slide').forEach(function(r) {
+        r.classList.remove('active');
+        r.style.background = '';
+    });
+
+    // Reset markers
+    document.querySelectorAll('.result-meter-marker').forEach(function(m) {
+        m.style.left = '0%';
+    });
+
+    // Reset sliders
+    document.querySelectorAll('.slider-input').forEach(function(s) {
+        s.value = 50;
+    });
+
+    // Show first slide
+    document.querySelectorAll('.slide')[0].classList.add('active');
+
+    // Reset dots
+    document.querySelectorAll('.dot').forEach(function(dot) {
+        dot.classList.remove('done', 'current');
+    });
+    document.querySelectorAll('.dot[data-dot="0"]').forEach(function(dot) {
+        dot.classList.add('current');
+    });
+}
+</script>
+
+</body>
+</html>
