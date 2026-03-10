@@ -340,6 +340,7 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.25);
         }
 
+
         /* ── Responsive ── */
         @media (max-height: 500px) {
             .slide-bottom {
@@ -377,9 +378,9 @@
 <div class="slides-wrapper" id="app">
 
     {% for i in slide_numbers %}
-    <div class="slide {% if forloop.first %}active{% endif %}" data-slide="{{ forloop.counter0 }}" data-has-slider="{% if forloop.counter >= 3 %}true{% else %}false{% endif %}">
+    <div class="slide {% if forloop.first %}active{% endif %}" data-slide="{{ forloop.counter0 }}" data-has-slider="{% if forloop.counter >= 3 and forloop.counter <= 8 %}true{% else %}false{% endif %}">
         <div class="slide-bg" style="background-image: url('{% static 'JPGs_leer/' %}{{ i }}.jpg');">
-            {% if forloop.counter >= 3 and not forloop.last %}
+            {% if forloop.counter >= 3 and forloop.counter <= 8 %}
             <div class="slider-overlay">
                 <div class="slider-track-wrapper">
                     <img class="slider-track-img" src="{% static 'Verlauf Regler.png' %}" alt="Slider">
@@ -411,19 +412,16 @@
             </div>
             {% endif %}
         </div>
-        {% if not forloop.last %}
         <div class="slide-bottom">
+            {% if not forloop.last %}
             <div class="progress-dots">
                 {% for j in slide_numbers %}
                 <div class="dot" data-dot="{{ forloop.counter0 }}"></div>
                 {% endfor %}
             </div>
-            {% if forloop.counter >= 3 %}
-            <div class="slide-counter">Frage {{ forloop.counter|add:"-2" }} von 7</div>
-            {% endif %}
             <button class="btn-continue" data-index="{{ forloop.counter0 }}">Weiter</button>
+            {% endif %}
         </div>
-        {% endif %}
     </div>
     {% endfor %}
 
@@ -431,8 +429,8 @@
 
 <script>
 (function() {
-    const TOTAL_SLIDES = 9;
-    const FIRST_SLIDER_SLIDE = 2; // 0-indexed: slides 3-9 have sliders (index 2-8)
+    const TOTAL_SLIDES = 11;
+    const FIRST_SLIDER_SLIDE = 2; // 0-indexed: slides 3-8 have sliders (index 2-7)
     let currentSlide = 0;
 
     const slides = document.querySelectorAll('.slide');
@@ -480,9 +478,9 @@
     }
 
     function computeTotal() {
-        // Last slide (index 8) has no slider; count only slides 2-7 (6 sliders, range 6-24)
+        // Only slides 2-7 (index) have sliders (6 sliders, range 6-24)
         let total = 0;
-        for (let i = FIRST_SLIDER_SLIDE; i < TOTAL_SLIDES - 1; i++) {
+        for (let i = FIRST_SLIDER_SLIDE; i < 8; i++) {
             const slider = slides[i].querySelector('.slider-input');
             total += slider ? getCategory(parseInt(slider.value)) : 0;
         }
@@ -511,7 +509,7 @@
         slides.forEach(s => s.classList.remove('active'));
         if (index < TOTAL_SLIDES) {
             slides[index].classList.add('active');
-            if (index === TOTAL_SLIDES - 1) {
+            if (index === 10) {
                 updateInlineResult();
             }
         }

@@ -2,3 +2,5 @@ venv/
 db.sqlite3
 .claude/
 .idea/
+docker-compose.yml
+Dockerfile
